@@ -1,0 +1,11 @@
+Confusion Matrix :
+     NONE     OK     RETEST     Unknown
+NONE     0     2     0     0     
+OK     0     5     1     0     
+RETEST     0     0     1     0     
+
+
+NONE, 2, 0, 2, 0.0000, 100.0000 
+OK, 6, 5, 1, 83.3333, 16.6667 
+RETEST, 1, 1, 0, 100.0000, 0.0000 
+Sum, 9, 6, 3, 66.6667, 33.3333

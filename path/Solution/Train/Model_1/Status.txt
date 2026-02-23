@@ -1,0 +1,14 @@
+[2026/02/20 16:32:25]Starting
+[2026/02/20 16:32:30]Start Learning
+[2026/02/20 16:32:36]epoch: 0, val_loss: 0.1038, train_loss: 1.3081, best_epoch: 0, best_loss: 0.1038, val_acc: 100.00%
+[2026/02/20 16:32:36]epoch: 1, val_loss: 0.1257, val_acc: 100.00, train_loss: 0.1283, best_epoch: 0, best_loss: 0.1038
+[2026/02/20 16:32:36]epoch: 2, val_loss: 0.1429, val_acc: 100.00, train_loss: 0.0301, best_epoch: 0, best_loss: 0.1038
+[2026/02/20 16:32:36]epoch: 3, val_loss: 0.1572, val_acc: 100.00, train_loss: 0.0115, best_epoch: 0, best_loss: 0.1038
+[2026/02/20 16:32:36]epoch: 4, val_loss: 0.1682, val_acc: 100.00, train_loss: 0.0054, best_epoch: 0, best_loss: 0.1038
+[2026/02/20 16:32:36]Completed Training. saving models...
+[2026/02/20 16:32:36]best_loss : 0.1038
+[2026/02/20 16:32:36]End Learning
+[2026/02/20 16:32:36]Tensorflow to ONNX Model Conversion Started
+[2026/02/20 16:32:40]Tensorflow to ONNX Model Conversion Ended
+[2026/02/20 16:32:40]XML Weight File for TensorRT Heatmap Started
+[2026/02/20 16:32:40]XML Weight File for TensorRT Heatmap Completed

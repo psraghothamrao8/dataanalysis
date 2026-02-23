@@ -1,0 +1,40 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Datasets (IMPORTANT)
+dataset/
+datasets/
+data/
+*.csv
+*.tsv
+*.json
+!n8n_workflow.json
+*.parquet
+*.zip
+
+# Logs
+*.log
+logs/
+
+# IDE settings
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Models
+*.pth
+models/

@@ -1,0 +1,136 @@
+{
+  "name": "AutoML Agent Workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/analyze",
+        "method": "GET",
+        "responseFormat": "json"
+      },
+      "name": "Analyze Dataset",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.issues_list.length > 0}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Issues Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Transform issues_list to BatchFixRequest items\nconst issues = items[0].json.issues_list;\nconst fixItems = issues.map(issue => ({\n  file_path: issue.file_path,\n  action: 'move',\n  new_label: issue.suggested_label\n}));\n\nreturn [{json: { items: fixItems }}];"
+      },
+      "name": "Prepare Fix Request",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/batch_fix",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={{JSON.stringify($json)}}"
+      },
+      "name": "Apply Batch Fix",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [1100, 200]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/train",
+        "method": "POST",
+        "responseFormat": "json"
+      },
+      "name": "Start Training",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [1320, 300]
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Analyze Dataset",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Dataset": {
+      "main": [
+        [
+          {
+            "node": "Issues Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Issues Found?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Fix Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Start Training",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Fix Request": {
+      "main": [
+        [
+          {
+            "node": "Apply Batch Fix",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Batch Fix": {
+      "main": [
+        [
+          {
+            "node": "Start Training",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
