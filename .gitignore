@@ -13,19 +13,9 @@ env/
 .ipynb_checkpoints/
 
 # Datasets (IMPORTANT)
-dataset/
-datasets/
-data/
-*.csv
-*.tsv
-*.json
-!n8n_workflow.json
-*.parquet
-*.zip
 
 # Logs
-*.log
-logs/
+
 
 # IDE settings
 .vscode/
