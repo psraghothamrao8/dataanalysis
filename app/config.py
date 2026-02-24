@@ -7,8 +7,7 @@ import pathlib
 BASE_DIR = pathlib.Path(__file__).parent.parent.resolve()
 
 DATASET_ROOT = os.path.join(BASE_DIR, "dataset")
-MODELS_DIR = os.path.join(BASE_DIR, "models")
-# MODELS_DIR = r"E:\raghotham\plato_new\frontierr\sxc\Train"
+MODELS_DIR = os.path.join(BASE_DIR, "path", "Solution")
 LOGS_DIR = os.path.join(BASE_DIR, "logs")
 
 # Ensure base dirs exist
@@ -46,13 +45,44 @@ def get_data_paths():
 # Default to a placeholder. User should set this env var or update this file.
 DL_PROCESS_WRAPPER_PATH = os.environ.get("DL_PROCESS_WRAPPER_PATH", r"C:\Program Files\Samsung Electro-Mechanics\SEM DL Kit\SEM_DL_Kit\Scripts\DLProcessWrapper2.4\DLProcessWrapper.exe")
 
-# Model Configuration Directory - Assuming it's inside the project root
-MODEL_CONFIG_DIR = os.path.join(MODELS_DIR, "Model_1")
-os.makedirs(MODEL_CONFIG_DIR, exist_ok=True)
+def get_latest_model_name():
+    """Finds the highest Model_X folder in Solution/Train."""
+    train_dir = os.path.join(MODELS_DIR, "Train")
+    if not os.path.exists(train_dir):
+        return "Model_1"
+    
+    max_num = 0
+    for d in os.listdir(train_dir):
+        if d.startswith("Model_") and os.path.isdir(os.path.join(train_dir, d)):
+            try:
+                num = int(d.split("_")[1])
+                if num > max_num:
+                    max_num = num
+            except ValueError:
+                pass
+    return f"Model_{max_num}" if max_num > 0 else "Model_1"
 
-MAX_CAPTION_LENGTH = 100
-TRAINING_JSON_PATH = os.path.join(MODEL_CONFIG_DIR, "Training.json")
-EVALUATION_JSON_PATH = os.path.join(MODEL_CONFIG_DIR, "Evaluation.json")
-TESTING_JSON_PATH = os.path.join(MODEL_CONFIG_DIR, "Testing.json")
-# TESTING_JSON_PATH moved to dynamic logic in training_service.py
-STATUS_FILE_PATH = os.path.join(MODEL_CONFIG_DIR, "Status.txt")
+def get_model_paths(model_name=None):
+    """Returns dynamic paths, optionally for a specific model_name, otherwise latest."""
+    if model_name is None:
+        model_name = get_latest_model_name()
+    
+    train_model_dir = os.path.join(MODELS_DIR, "Train", model_name)
+    test_model_dir = os.path.join(MODELS_DIR, "Test", model_name)
+    
+    # Ensure they exist (during initial boot)
+    os.makedirs(train_model_dir, exist_ok=True)
+    os.makedirs(test_model_dir, exist_ok=True)
+    
+    return {
+        "model_name": model_name,
+        "train_dir": train_model_dir,
+        "test_dir": test_model_dir,
+        "training_json": os.path.join(train_model_dir, "Training.json"),
+        "evaluation_json": os.path.join(train_model_dir, "Evaluation.json"),
+        "testing_json": os.path.join(test_model_dir, "Testing.json"),
+        "status_file": os.path.join(train_model_dir, "Status.txt")
+    }
+
+# Remove legacy module-level variables like MODEL_CONFIG_DIR and TRAINING_JSON_PATH
+# Files needing these will call get_model_paths() directly.

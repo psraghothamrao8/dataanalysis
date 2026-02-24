@@ -18,8 +18,7 @@ except ImportError:
 
 from app.config import (
     MODELS_DIR, LOGS_DIR, get_data_paths, DATASET_ROOT,
-    DL_PROCESS_WRAPPER_PATH, TRAINING_JSON_PATH, EVALUATION_JSON_PATH, TESTING_JSON_PATH,
-    STATUS_FILE_PATH, MODEL_CONFIG_DIR, BASE_DIR
+    DL_PROCESS_WRAPPER_PATH, BASE_DIR, get_model_paths, get_latest_model_name
 )
 from app.logger_config import setup_logger
 from app.services.data_service import CustomImageDataset, train_transform, val_transform
@@ -143,13 +142,17 @@ def scan_dataset_and_update_configs():
     logger.info(f"Classes identified: {classes}")
 
     # 4. Update Training.json
+    paths_dict = get_model_paths()
+    training_json_path = paths_dict["training_json"]
+    model_name = paths_dict["model_name"]
+
     # Ensure Training.json exists by copying from template if needed
-    if not os.path.exists(TRAINING_JSON_PATH):
+    if not os.path.exists(training_json_path):
         template_path = os.path.join(BASE_DIR, "training.json")
         if os.path.exists(template_path):
             try:
-                shutil.copy(template_path, TRAINING_JSON_PATH)
-                logger.info(f"Created {TRAINING_JSON_PATH} from template.")
+                shutil.copy(template_path, training_json_path)
+                logger.info(f"Created {training_json_path} from template.")
             except Exception as e:
                 logger.error(f"Failed to create Training.json from template: {e}")
                 return False
@@ -157,9 +160,9 @@ def scan_dataset_and_update_configs():
              logger.error(f"Training.json not found and no template at {template_path}")
              return False
 
-    if os.path.exists(TRAINING_JSON_PATH):
+    if os.path.exists(training_json_path):
         try:
-            with open(TRAINING_JSON_PATH, 'r') as f:
+            with open(training_json_path, 'r') as f:
                 t_data = json.load(f)
             
             # Update fields
@@ -176,10 +179,11 @@ def scan_dataset_and_update_configs():
                 # Ensure Paths are Local and Correct
                 t_data["Model"]["SolutionDir"] = str(MODELS_DIR) + os.sep 
                 t_data["Model"]["ModelDir"] = "Train" # Forever Train, as that's where model is saved
+                t_data["Model"]["name"] = model_name
                 
-            with open(TRAINING_JSON_PATH, 'w') as f:
+            with open(training_json_path, 'w') as f:
                 json.dump(t_data, f, indent=2)
-            logger.info(f"Updated {TRAINING_JSON_PATH}")
+            logger.info(f"Updated {training_json_path}")
         except Exception as e:
             logger.error(f"Failed to update Training.json: {e}")
             return False
@@ -188,39 +192,20 @@ def scan_dataset_and_update_configs():
     # Create it if it doesn't exist? Or only update if exists?
     # Uses TESTING_JSON_PATH
             
-    # 5. Update Testing.json
     # Logic: Read SolutionDir and ModelName from Training.json to find the REAL Testing.json path
-    target_test_json = TESTING_JSON_PATH # Fallback
-    
-    try:
-        if os.path.exists(TRAINING_JSON_PATH):
-            with open(TRAINING_JSON_PATH, 'r') as f:
-                t_data = json.load(f)
-                
-            model_info = t_data.get("Model", {})
-            sol_dir = model_info.get("SolutionDir")
-            model_name = model_info.get("name", "Model_1")
-            
-            if sol_dir:
-                # Construct path: SolutionDir/Test/ModelName/Testing.json
-                test_dir_real = os.path.join(sol_dir, "Test", model_name)
-                os.makedirs(test_dir_real, exist_ok=True)
-                target_test_json = os.path.join(test_dir_real, "Testing.json")
-                logger.info(f"Resolved real Testing.json path: {target_test_json}")
-    except Exception as e:
-        logger.warning(f"Failed to resolve real Testing.json path, using fallback: {e}")
+    target_test_json = paths_dict["testing_json"]
+    evaluation_json_path = paths_dict["evaluation_json"]
 
-    # Create it if it doesn't exist? Or only update if exists?
     # Create it if it doesn't exist? Or only update if exists?
     # User says Test and Eval formats are similar, unlike Training.
     if not os.path.exists(target_test_json):
-         if os.path.exists(EVALUATION_JSON_PATH):
+         if os.path.exists(evaluation_json_path):
              try:
-                 shutil.copy(EVALUATION_JSON_PATH, target_test_json)
+                 shutil.copy(evaluation_json_path, target_test_json)
                  logger.info(f"Created {target_test_json} from Evaluation.json template.")
              except Exception as e:
                  logger.warning(f"Failed to create Testing.json from Evaluation.json: {e}")
-         elif os.path.exists(TRAINING_JSON_PATH):
+         elif os.path.exists(training_json_path):
              # Fallback to Training only if really needed, but might be wrong format.
              # Better to skip and warn? User said "Train is different". 
              # Let's avoid copying Training.json if possible.
@@ -244,6 +229,7 @@ def scan_dataset_and_update_configs():
                  test_data["Model"]["iTotalClasses"] = len(classes)
                  test_data["Model"]["iTrainImgCount"] = 0
                  test_data["Model"]["iValidationImgCount"] = 0
+                 test_data["Model"]["name"] = model_name
                  # Don't update SolutionDir as requested
                  # test_data["Model"]["SolutionDir"] = str(MODELS_DIR) + os.sep
                  # test_data["Model"]["ModelDir"] = "Train"
@@ -256,9 +242,9 @@ def scan_dataset_and_update_configs():
             return False
 
     # 6. Update Evaluation.json (In Place, preserving format)
-    if os.path.exists(EVALUATION_JSON_PATH):
+    if os.path.exists(evaluation_json_path):
         try:
-            with open(EVALUATION_JSON_PATH, 'r') as f:
+            with open(evaluation_json_path, 'r') as f:
                 eval_data = json.load(f)
             
             # Update Images and Classes
@@ -277,13 +263,14 @@ def scan_dataset_and_update_configs():
                  eval_data["Model"]["iTestImgCount"] = 0 
                  eval_data["Model"]["iTotalClasses"] = len(classes)
                  eval_data["Model"]["iValidationImgCount"] = 0
+                 eval_data["Model"]["name"] = model_name
                  # Don't update SolutionDir as requested
                  # eval_data["Model"]["SolutionDir"] = str(MODELS_DIR) + os.sep
                  # eval_data["Model"]["ModelDir"] = "Train"
                  
-            with open(EVALUATION_JSON_PATH, 'w') as f:
+            with open(evaluation_json_path, 'w') as f:
                 json.dump(eval_data, f, indent=2)
-            logger.info(f"Updated {EVALUATION_JSON_PATH}")
+            logger.info(f"Updated {evaluation_json_path}")
         except Exception as e:
             logger.error(f"Failed to update Evaluation.json: {e}")
             # Don't return False here? Evaluation is secondary to Training config? 
@@ -291,6 +278,65 @@ def scan_dataset_and_update_configs():
             return False
 
     return True
+
+
+def create_new_model_version():
+    """
+    Creates a new Model_X directory and associated configurations.
+    Triggered when a new dataset is uploaded.
+    """
+    # Get current latest model (e.g., Model_1)
+    current_model = get_latest_model_name()
+    current_num = 1
+    if current_model.startswith("Model_"):
+        try:
+            current_num = int(current_model.split("_")[1])
+        except ValueError:
+            pass
+            
+    # Calculate next model
+    next_num = current_num + 1
+    next_model = f"Model_{next_num}"
+    
+    # Get paths for curr and next
+    curr_paths = get_model_paths(current_model)
+    next_paths = get_model_paths(next_model)  # This will os.makedirs internally
+    
+    # We should copy config JSONs from current to next to preserve structure
+    for key in ["training_json", "evaluation_json"]:
+        if os.path.exists(curr_paths[key]):
+            try:
+                with open(curr_paths[key], 'r') as f:
+                    data = json.load(f)
+                if "Model" in data:
+                    data["Model"]["name"] = next_model
+                with open(next_paths[key], 'w') as f:
+                    json.dump(data, f, indent=2)
+            except Exception as e:
+                logger.error(f"Failed to copy {key} to {next_model}: {e}")
+                
+    if os.path.exists(curr_paths["testing_json"]):
+        try:
+            with open(curr_paths["testing_json"], 'r') as f:
+                data = json.load(f)
+            if "Model" in data:
+                data["Model"]["name"] = next_model
+            with open(next_paths["testing_json"], 'w') as f:
+                json.dump(data, f, indent=2)
+        except Exception as e:
+            logger.error(f"Failed to copy testing_json to {next_model}: {e}")
+            
+    # Create empty Stopbuffer texts if they don't exist
+    for f in [os.path.join(next_paths["train_dir"], "StopbufferTrain.txt"),
+              os.path.join(next_paths["test_dir"], "StopbufferTest.txt")]:
+        try:
+            with open(f, 'w') as fh:
+                fh.write("")
+        except Exception as e:
+            logger.error(f"Failed to create stop buffer file {f}: {e}")
+            
+    logger.info(f"Successfully created new model version: {next_model}")
+    return next_model
 
 
 # --- DL Process Wrapper Integration ---
@@ -598,10 +644,15 @@ def run_automated_training(full_epochs=1, custom_params=None, custom_dataset_pat
     if not scan_dataset_and_update_configs():
          return {"status": "error", "message": "Failed to scan dataset and update configurations."}
     
+    paths_dict = get_model_paths()
+    training_json = paths_dict["training_json"]
+    eval_json = paths_dict["evaluation_json"]
+    status_file = paths_dict["status_file"]
+    
     # 0. Clean up stale files to ensure we don't read old data
     try:
-        if os.path.exists(STATUS_FILE_PATH):
-            os.remove(STATUS_FILE_PATH)
+        if os.path.exists(status_file):
+            os.remove(status_file)
         
         # Cleanup eval/test matrices if possible (path guessing)
         # We can't easily guess them all without parsing configs, but we can try basic locations if needed.
@@ -609,10 +660,6 @@ def run_automated_training(full_epochs=1, custom_params=None, custom_dataset_pat
     except Exception as e:
         logger.warning(f"Failed to clean up stale files: {e}")
 
-    # 1. Setup paths
-    training_json = TRAINING_JSON_PATH
-    eval_json = EVALUATION_JSON_PATH
-    
     # Remove auto-calculation of num_classes as requested by user ("don't change")
     params = custom_params or {}
     params['epochs'] = full_epochs
@@ -652,7 +699,7 @@ def run_automated_training(full_epochs=1, custom_params=None, custom_dataset_pat
     
     # 4. Poll for Training Completion
     # We poll Status.txt for "SUCCESS" or "TENSORRT"
-    last_status = poll_for_status(STATUS_FILE_PATH, timeout=60000) # Long timeout for training
+    last_status = poll_for_status(status_file, timeout=60000) # Long timeout for training
     
     if not last_status:
         # Fallback: maybe it finished but didn't write SUCCESS? 
@@ -660,7 +707,7 @@ def run_automated_training(full_epochs=1, custom_params=None, custom_dataset_pat
         # We will log a warning but try to proceed if we see *some* status, or abort?
         # User implies strict wait.
         logger.warning("Training completion marker not found. Proceeding with caution or check Status.txt content manually.")
-        last_status = parse_status_log(STATUS_FILE_PATH) # Try to get whatever is there
+        last_status = parse_status_log(status_file) # Try to get whatever is there
     
     logger.info(f"Training Completed. Last Status: {last_status}")
 
@@ -720,26 +767,12 @@ def run_automated_training(full_epochs=1, custom_params=None, custom_dataset_pat
     eval_results = parse_confusion_matrix_file(eval_matrix_path, ok_classes=ok_classes)
     
     # 7. Run Testing - ONLY after Eval success
-    # We need to read the model name from Training.json to know the test directory
-    model_name = "Model_1" # Default
-    solution_dir = str(MODELS_DIR) # Safe default
-    
-    try:
-        with open(training_json, 'r') as f:
-            d = json.load(f)
-            if "Model" in d:
-                 if "name" in d["Model"]:
-                     model_name = d["Model"]["name"]
-                 if "SolutionDir" in d["Model"]:
-                     solution_dir = d["Model"]["SolutionDir"]
-    except:
-        logger.warning("Failed to parse Training.json for Test dir path. Using defaults.")
-
-    test_dir = os.path.join(solution_dir, "Test", model_name)
+    # Test directory comes dynamically from get_model_paths()
+    test_dir = paths_dict["test_dir"]
     os.makedirs(test_dir, exist_ok=True)
 
     
-    real_test_json_path = os.path.join(test_dir, "Testing.json")
+    real_test_json_path = paths_dict["testing_json"]
     
     # Copy training config to this new location for Testing -> NO, User says different format.
     # Update Testing.json IN PLACE

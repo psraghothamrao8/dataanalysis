@@ -1,0 +1,10 @@
+{
+  "ok_classes": [
+    "OK"
+  ],
+  "ng_classes": [
+    "NG",
+    "RETEST",
+    "NONE"
+  ]
+}

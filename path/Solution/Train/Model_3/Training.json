@@ -1,0 +1,245 @@
+{
+  "Model": {
+    "EngineType": "TensorFlow",
+    "bIsValPresent": true,
+    "iTrainImgCount": 3,
+    "iValidationImgCount": 3,
+    "iTestImgCount": 0,
+    "iTotalClasses": 3,
+    "bIsAugPresent": false,
+    "iAugCount": 0,
+    "name": "Model_3",
+    "epochs": 5,
+    "valRatio": 11,
+    "minEpoch": 0,
+    "patience": 50,
+    "gpu": "NVIDIA GeForce RTX 3090",
+    "SolutionDir": "C:\\Users\\rag\\Pictures\\data_analysis\\path\\Solution\\",
+    "JsonDir": "ModelConfig",
+    "ModelDir": "Train",
+    "TFModelName": "model_best_epoch.h5",
+    "TFModelNameWithoutExt": null,
+    "TFModelExt": null,
+    "bIsContinue": false,
+    "ParentTFModel": "",
+    "iHeight": 144,
+    "iWidth": 256,
+    "iChannels": 3,
+    "ExportTFModel": null,
+    "ExportSavePath": null,
+    "ExportSemdlName": null,
+    "ParentTFConfig": null,
+    "BestLoss": null,
+    "TrainMethod": "Resnet14TF",
+    "TFRecordsChangeRequired": true,
+    "iParentHeight": 0,
+    "iParentWidth": 0,
+    "iParentChannels": 0,
+    "iLeftX": 0,
+    "iTopY": 0,
+    "iRectWidth": 256,
+    "iRectHeight": 144,
+    "strROIType": "Normal",
+    "iParentRectHeight": 0,
+    "iParentRectWidth": 0,
+    "iParentLeftX": 0,
+    "iParentTopY": 0,
+    "ParentModelType": null,
+    "iBusID": 101,
+    "iBatchSize": 64,
+    "fBaseLR": 0.0001,
+    "fEndLR": 0.0,
+    "iLRD": 50,
+    "dweightForward": 0.0,
+    "dweightBackward": 0.0,
+    "bIsManualMeanValueSet": false,
+    "bIsUseMeanFile": false,
+    "bUseFP16": false,
+    "bUseLogit": false,
+    "bUseMemory": false,
+    "iBMean": 0,
+    "iGMean": 0,
+    "iRMean": 0,
+    "bRGBModeller": false,
+    "strMergeRule": null,
+    "bUseDynamicAug": true,
+    "strRGBColorMap": null,
+    "bUseTensorRTEngine": false,
+    "AlgorithmType": "",
+    "AlgorithmName": "",
+    "strOptimizer": "Adam",
+    "strLoss": "WeightedCrossEntropy",
+    "use_caption_encoding": false,
+    "strNoisyAugAlgoType": "",
+    "strNoisyAlgoType": null,
+    "strNoisyAugAlgoParams": null,
+    "strNetworkParams": null,
+    "iINCVSplit": 0,
+    "strBestModel": "Min Val Loss",
+    "dWeight": 0.0,
+    "iFilterKernelSize": 0,
+    "iMinArea": 0,
+    "strImageType": null,
+    "iMultiInference": 0,
+    "fMixupProbability": 0.5,
+    "fRegularization": 0.0001,
+    "fLabelSmoothing": 0.0,
+    "fLRDecay": 0.5,
+    "bIsRegularization": true,
+    "bIsLabelSmoothing": false,
+    "fAugProbability": 0.0,
+    "fThresholdProb": 0.0,
+    "fIouLossThres": 0.0,
+    "strLRPolicy": "step",
+    "bIsHybridMode": false,
+    "tfrec_lmdb_path": "C:/Users/rag/Pictures/data_analysis/path/Solution",
+    "bUseTFRecords": true,
+    "bUseSWA": false,
+    "PreProcessing": null,
+    "bSaveIntermediateModel": false,
+    "LotSolutionDir": null,
+    "sSaveBestModel": "1",
+    "IOUMetric": false,
+    "fMinScore": 0.0,
+    "fMaxScore": 0.0,
+    "ParentModelFolder": "Model_1",
+    "BestModelFolders": null,
+    "iBBMaxHeight": 0.0,
+    "iBBMaxWidth": 0.0,
+    "bUseOKOrNGJudge": false,
+    "fOKBatchRatio": 0.0,
+    "fMissRate": 0.0,
+    "fThreshold": 0.0,
+    "bUseResizeImg": false,
+    "iResizeHeight": 0,
+    "iResizeWidth": 0,
+    "is_onnx": false,
+    "max_caption_length": 0,
+    "is_int8": false,
+    "nms_iou": 0.0,
+    "max_box": 0
+  },
+  "classlst": [
+    {
+      "ClassName": "NONE",
+      "iClassWeights": 1
+    },
+    {
+      "ClassName": "OK",
+      "iClassWeights": 1
+    },
+    {
+      "ClassName": "RETEST",
+      "iClassWeights": 1
+    }
+  ],
+  "classBin": [
+    {
+      "classBinName": "NG"
+    },
+    {
+      "classBinName": "OK"
+    },
+    {
+      "classBinName": "NG"
+    }
+  ],
+  "Datasets": [],
+  "trainImglst": [
+    {
+      "ImageName": "C:\\Users\\rag\\Pictures\\data_analysis\\path2\\dataset\\mlcc\\train\\OK\\1.jpg",
+      "Label": 0,
+      "MaskPath": null,
+      "Captions": null,
+      "DatasetId": 1,
+      "CaptionsSentence": null,
+      "TabularInfo": null
+    },
+    {
+      "ImageName": "C:\\Users\\rag\\Pictures\\data_analysis\\path2\\dataset\\mlcc\\train\\NONE\\1.jpg",
+      "Label": 1,
+      "MaskPath": null,
+      "Captions": null,
+      "DatasetId": 1,
+      "CaptionsSentence": null,
+      "TabularInfo": null
+    },
+    {
+      "ImageName": "C:\\Users\\rag\\Pictures\\data_analysis\\path2\\dataset\\mlcc\\train\\RETEST\\1.jpg",
+      "Label": 2,
+      "MaskPath": null,
+      "Captions": null,
+      "DatasetId": 1,
+      "CaptionsSentence": null,
+      "TabularInfo": null
+    }
+  ],
+  "ValImgList": [
+    {
+      "ImageName": "C:\\Users\\rag\\Pictures\\data_analysis\\path2\\dataset\\mlcc\\val\\OK\\1.jpg",
+      "Label": 0,
+      "MaskPath": null,
+      "Captions": null,
+      "DatasetId": 1,
+      "CaptionsSentence": null,
+      "TabularInfo": null
+    },
+    {
+      "ImageName": "C:\\Users\\rag\\Pictures\\data_analysis\\path2\\dataset\\mlcc\\val\\NONE\\1.jpg",
+      "Label": 1,
+      "MaskPath": null,
+      "Captions": null,
+      "DatasetId": 1,
+      "CaptionsSentence": null,
+      "TabularInfo": null
+    },
+    {
+      "ImageName": "C:\\Users\\rag\\Pictures\\data_analysis\\path2\\dataset\\mlcc\\val\\RETEST\\1.jpg",
+      "Label": 2,
+      "MaskPath": null,
+      "Captions": null,
+      "DatasetId": 1,
+      "CaptionsSentence": null,
+      "TabularInfo": null
+    }
+  ],
+  "testImglst": null,
+  "AugEnumlst": [],
+  "ChRandomBrightness": null,
+  "WeakAugEnumlst": [],
+  "classPrbwt": null,
+  "DataCollection": {
+    "ReferenceImageNum": null,
+    "SearchPath": null,
+    "KeyWords": null,
+    "TargetPath": null,
+    "TrainNewModel": false,
+    "TargetNum": 0,
+    "ClassIndex": null
+  },
+  "AutoML": {
+    "AugmentaionPolicyWidth": 0.0
+  },
+  "SemiSupervised": {
+    "UnlabeledLossThreshold": 0.0,
+    "UnlabeledBatchSize": 0,
+    "UnlabledPath": null
+  },
+  "SelfLearning": {
+    "UnlabledPath": null
+  },
+  "DivideMix": {
+    "WarmUpProb": 0.0,
+    "GMMThreshold": 0.0,
+    "JudgeThreshold": 0.0
+  },
+  "SplitNet": null,
+  "WithSPACE": {
+    "MinScore": 0.0,
+    "ScoreFile": null,
+    "ScoreFilePath": null,
+    "AddDataPath": null
+  },
+  "InferenceCaptions": null,
+  "CaptionRuleSetting": null
+}
