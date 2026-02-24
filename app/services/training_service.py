@@ -591,19 +591,43 @@ def run_dl_process_wrapper(config_path, mode="Train"):
 def poll_for_status(file_path, timeout=600):
     """
     Polls the Status.txt file until "SUCCESS", "TENSORRT", or "End Learning" is found, or timeout.
-    Returns the parsed status if successful, None otherwise.
+    Returns the parsed status if successful, {"status": "error", "message": ...} if error found, None otherwise.
     """
     start_time = time.time()
     logger.info(f"Polling {file_path} for completion status...")
     
+    last_mod_time = 0
+    unchanged_time = 0
+    
     while time.time() - start_time < timeout:
         if os.path.exists(file_path):
             try:
+                # Check if file has stopped updating for too long
+                current_mod_time = os.path.getmtime(file_path)
+                if current_mod_time == last_mod_time:
+                    unchanged_time = time.time() - current_mod_time
+                else:
+                    last_mod_time = current_mod_time
+                    unchanged_time = 0
+                
                 with open(file_path, 'r') as f:
                     content = f.read()
+                    
                     if "SUCCESS" in content or "TENSORRT" in content or "End Learning" in content:
                         logger.info("Training process reported SUCCESS/TENSORRT/End Learning.")
                         return parse_status_log(file_path)
+                        
+                    content_upper = content.upper()
+                    if "ERROR" in content_upper or "EXCEPTION" in content_upper or "FAIL" in content_upper:
+                        logger.error(f"Error detected in Status.txt: {content.strip()}")
+                        return {"status": "error", "message": content.strip()}
+                        
+                # If the file hasn't changed in 60 seconds, and DLProcessWrapper has already exited (as we are polling after it returns),
+                # it's possible the background process died without writing an error.
+                if unchanged_time > 60:
+                     logger.error("Status.txt has not been updated for 60 seconds. Assuming process died.")
+                     return {"status": "error", "message": "Process stalled or died prematurely. " + content.strip()}
+                     
             except Exception as e:
                 pass # Retry on read error
         
@@ -693,6 +717,11 @@ def run_automated_training(full_epochs=1, custom_params=None, custom_dataset_pat
                      raise optuna.exceptions.TrialPruned("DLProcessWrapper execution failed.")
                      
                 status = poll_for_status(status_file, timeout=60000)
+                
+                if status and isinstance(status, dict) and status.get("status") == "error":
+                     logger.warning(f"Trial {trial.number}: detected error: {status.get('message')}")
+                     raise optuna.exceptions.TrialPruned(f"Training failed: {status.get('message')}")
+                     
                 if not status:
                     status = parse_status_log(status_file)
                     
@@ -763,6 +792,10 @@ def run_automated_training(full_epochs=1, custom_params=None, custom_dataset_pat
     # We poll Status.txt for "SUCCESS" or "TENSORRT"
     last_status = poll_for_status(status_file, timeout=60000) # Long timeout for training
     
+    if last_status and isinstance(last_status, dict) and last_status.get("status") == "error":
+        logger.error(f"Final training failed: {last_status.get('message')}")
+        return last_status
+        
     if not last_status:
         # Fallback: maybe it finished but didn't write SUCCESS? 
         # But user said "wait till SUCCESS or TENSORRT comes".
