@@ -661,13 +661,71 @@ def run_automated_training(full_epochs=1, custom_params=None, custom_dataset_pat
         logger.warning(f"Failed to clean up stale files: {e}")
 
     # Remove auto-calculation of num_classes as requested by user ("don't change")
-    params = custom_params or {}
-    params['epochs'] = full_epochs
     
-    # Update Training.json
-    if not generate_config_json(training_json, mode="Train", params=params):
+    # --- Optuna Hyperparameter Tuning ---
+    if custom_params and len(custom_params) > 0:
+        logger.info(f"Using provided custom hyperparameters: {custom_params}")
+        best_params = custom_params
+        if 'epochs' not in best_params:
+            best_params['epochs'] = full_epochs
+    else:
+        logger.info("No hyperparameters provided. Starting Optuna tuning...")
+        # attempt to run optuna tuning
+        try:
+            import optuna
+            
+            def objective(trial):
+                trial_lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
+                trial_batch_size = trial.suggest_categorical("batch_size", [8, 16, 32])
+                trial_params = {"lr": trial_lr, "batch_size": trial_batch_size, "epochs": full_epochs}
+                
+                logger.info(f"Optuna Trial {trial.number}: Testing params {trial_params}")
+                
+                if not generate_config_json(training_json, mode="Train", params=trial_params):
+                    raise optuna.exceptions.TrialPruned("Failed to generate training configuration.")
+                
+                if os.path.exists(status_file):
+                    try: os.remove(status_file)
+                    except: pass
+                
+                logger.info(f"Launching Training Process for Trial {trial.number}...")
+                if not run_dl_process_wrapper(training_json, "Train"):
+                     raise optuna.exceptions.TrialPruned("DLProcessWrapper execution failed.")
+                     
+                status = poll_for_status(status_file, timeout=60000)
+                if not status:
+                    status = parse_status_log(status_file)
+                    
+                if status and "val_loss" in status:
+                    logger.info(f"Trial {trial.number} finished with val_loss: {status['val_loss']}")
+                    return status["val_loss"]
+                elif status and "best_loss" in status:
+                    logger.info(f"Trial {trial.number} finished with best_loss: {status['best_loss']}")
+                    return status["best_loss"]
+                else:
+                    logger.warning(f"Trial {trial.number}: Could not read loss from Status.txt. Pruning.")
+                    raise optuna.exceptions.TrialPruned("Could not read loss from Status.txt")
+            
+            optuna.logging.set_verbosity(optuna.logging.INFO)
+            study = optuna.create_study(direction="minimize")
+            study.optimize(objective, n_trials=3)
+            
+            best_params = study.best_params
+            best_params["epochs"] = full_epochs
+            logger.info(f"Optuna tuning completed. Best params found: {best_params}")
+            
+        except ImportError:
+            logger.warning("Optuna is not installed. Using default parameters.")
+            best_params = {"epochs": full_epochs}
+        except Exception as e:
+            logger.error(f"Optuna tuning encountered an error: {e}. Falling back to defaults.")
+            best_params = {"epochs": full_epochs}
+            
+    # Update Training.json with the best parameters before final training
+    logger.info(f"Generating final Training.json with params: {best_params}")
+    if not generate_config_json(training_json, mode="Train", params=best_params):
          return {"status": "error", "message": "Failed to generate Training.json"}
-    
+
     # --- identify OK classes from training.json for metrics calculation ---
     ok_classes = ["OK"] # default fallback
     try:
@@ -691,10 +749,14 @@ def run_automated_training(full_epochs=1, custom_params=None, custom_dataset_pat
     except Exception as e:
         logger.warning(f"Failed to parse OK classes from training.json: {e}")
 
-    # 3. Run Training
-    logger.info("Launching Training Process...")
+    # 3. Run FINAL Training
+    if os.path.exists(status_file):
+        try: os.remove(status_file)
+        except: pass
+
+    logger.info("Launching Final Training Process with best parameters...")
     if not run_dl_process_wrapper(training_json, "Train"):
-        logger.error("Training process failed execution (exit code).")
+        logger.error("Final Training process failed execution (exit code).")
         return {"status": "error", "message": "Training process failed execution"}
     
     # 4. Poll for Training Completion
