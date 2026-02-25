@@ -328,10 +328,11 @@ def create_new_model_version():
             
     # Create empty Stopbuffer texts if they don't exist
     for f in [os.path.join(next_paths["train_dir"], "StopbufferTrain.txt"),
+              os.path.join(next_paths["train_dir"], "StopbufferTest.txt"),
               os.path.join(next_paths["test_dir"], "StopbufferTest.txt")]:
         try:
             with open(f, 'w') as fh:
-                fh.write("")
+                fh.write("1")
         except Exception as e:
             logger.error(f"Failed to create stop buffer file {f}: {e}")
             
@@ -596,20 +597,9 @@ def poll_for_status(file_path, timeout=600):
     start_time = time.time()
     logger.info(f"Polling {file_path} for completion status...")
     
-    last_mod_time = 0
-    unchanged_time = 0
-    
     while time.time() - start_time < timeout:
         if os.path.exists(file_path):
             try:
-                # Check if file has stopped updating for too long
-                current_mod_time = os.path.getmtime(file_path)
-                if current_mod_time == last_mod_time:
-                    unchanged_time = time.time() - current_mod_time
-                else:
-                    last_mod_time = current_mod_time
-                    unchanged_time = 0
-                
                 with open(file_path, 'r') as f:
                     content = f.read()
                     
@@ -621,12 +611,6 @@ def poll_for_status(file_path, timeout=600):
                     if "ERROR" in content_upper or "EXCEPTION" in content_upper or "FAIL" in content_upper:
                         logger.error(f"Error detected in Status.txt: {content.strip()}")
                         return {"status": "error", "message": content.strip()}
-                        
-                # If the file hasn't changed in 60 seconds, and DLProcessWrapper has already exited (as we are polling after it returns),
-                # it's possible the background process died without writing an error.
-                if unchanged_time > 60:
-                     logger.error("Status.txt has not been updated for 60 seconds. Assuming process died.")
-                     return {"status": "error", "message": "Process stalled or died prematurely. " + content.strip()}
                      
             except Exception as e:
                 pass # Retry on read error
@@ -711,6 +695,16 @@ def run_automated_training(full_epochs=1, custom_params=None, custom_dataset_pat
                 if os.path.exists(status_file):
                     try: os.remove(status_file)
                     except: pass
+                    
+                # Ensure StopbufferTrain.txt and StopbufferTest.txt exist before Training
+                train_dir = os.path.dirname(training_json)
+                try:
+                    with open(os.path.join(train_dir, "StopbufferTrain.txt"), 'w') as f:
+                        f.write("1")
+                    with open(os.path.join(train_dir, "StopbufferTest.txt"), 'w') as f:
+                        f.write("1")
+                except Exception as e:
+                    logger.warning(f"Failed to create Stopbuffer files in Train dir: {e}")
                 
                 logger.info(f"Launching Training Process for Trial {trial.number}...")
                 if not run_dl_process_wrapper(training_json, "Train"):
@@ -783,6 +777,16 @@ def run_automated_training(full_epochs=1, custom_params=None, custom_dataset_pat
         try: os.remove(status_file)
         except: pass
 
+    # Ensure StopbufferTrain.txt and StopbufferTest.txt exist before Training
+    train_dir = os.path.dirname(training_json)
+    try:
+        with open(os.path.join(train_dir, "StopbufferTrain.txt"), 'w') as f:
+            f.write("1")
+        with open(os.path.join(train_dir, "StopbufferTest.txt"), 'w') as f:
+            f.write("1")
+    except Exception as e:
+        logger.warning(f"Failed to create Stopbuffer files in Train dir: {e}")
+
     logger.info("Launching Final Training Process with best parameters...")
     if not run_dl_process_wrapper(training_json, "Train"):
         logger.error("Final Training process failed execution (exit code).")
@@ -837,13 +841,13 @@ def run_automated_training(full_epochs=1, custom_params=None, custom_dataset_pat
         try: os.remove(eval_matrix_path)
         except: pass
     
-    # Ensure StopBufferTest.txt exists before Evaluation
-    stop_buffer_path = os.path.join(os.path.dirname(training_json), "StopBufferTest.txt")
+    # Ensure StopbufferTest.txt exists before Evaluation
+    stop_buffer_path = os.path.join(os.path.dirname(training_json), "StopbufferTest.txt")
     try:
         with open(stop_buffer_path, 'w') as f:
             f.write("1") # Ensure it has content
     except Exception as e:
-        logger.warning(f"Failed to create StopBufferTest.txt: {e}")
+        logger.warning(f"Failed to create StopbufferTest.txt: {e}")
 
     logger.info("Launching Evaluation Process...")
     if not run_dl_process_wrapper(eval_json, "Evaluate"):
@@ -896,13 +900,13 @@ def run_automated_training(full_epochs=1, custom_params=None, custom_dataset_pat
         try: os.remove(test_matrix_path)
         except: pass
     
-    # Ensure StopBufferTest.txt exists before Testing
-    stop_buffer_test_path = os.path.join(test_dir, "StopBufferTest.txt")
+    # Ensure StopbufferTest.txt exists before Testing
+    stop_buffer_test_path = os.path.join(test_dir, "StopbufferTest.txt")
     try:
         with open(stop_buffer_test_path, 'w') as f:
             f.write("1") 
     except Exception as e:
-        logger.warning(f"Failed to create StopBufferTest.txt in Test dir: {e}")
+        logger.warning(f"Failed to create StopbufferTest.txt in Test dir: {e}")
 
     logger.info(f"Launching Testing Process with config at: {real_test_json_path}")
     if not run_dl_process_wrapper(real_test_json_path, "Test"):
@@ -1061,13 +1065,13 @@ def run_inference():
         try: os.remove(eval_matrix_path)
         except: pass
     
-    # Ensure StopBufferTest.txt exists 
-    stop_buffer_path = os.path.join(os.path.dirname(training_json), "StopBufferTest.txt")
+    # Ensure StopbufferTest.txt exists 
+    stop_buffer_path = os.path.join(os.path.dirname(training_json), "StopbufferTest.txt")
     try:
         with open(stop_buffer_path, 'w') as f:
             f.write("1") 
     except Exception as e:
-        logger.warning(f"Failed to create StopBufferTest.txt: {e}")
+        logger.warning(f"Failed to create StopbufferTest.txt: {e}")
 
     logger.info("Launching Evaluation Process...")
     if not run_dl_process_wrapper(eval_json, "Evaluate"):
@@ -1165,13 +1169,13 @@ def run_inference():
         try: os.remove(test_matrix_path)
         except: pass
     
-    # Ensure StopBufferTest.txt in Test Dir
-    stop_buffer_test_path = os.path.join(test_dir_real, "StopBufferTest.txt")
+    # Ensure StopbufferTest.txt in Test Dir
+    stop_buffer_test_path = os.path.join(test_dir_real, "StopbufferTest.txt")
     try:
         with open(stop_buffer_test_path, 'w') as f:
             f.write("1") 
     except Exception as e:
-        logger.warning(f"Failed to create StopBufferTest.txt in Test dir: {e}")
+        logger.warning(f"Failed to create StopbufferTest.txt in Test dir: {e}")
 
     logger.info(f"Launching Testing Process with config at: {real_test_json_path}")
     if not run_dl_process_wrapper(real_test_json_path, "Test"):
