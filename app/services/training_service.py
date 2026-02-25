@@ -250,7 +250,7 @@ def scan_dataset_and_update_configs():
             # Update Images and Classes
             eval_data["classlst"] = class_lst
             eval_data["classBin"] = class_bin
-            eval_data["testImglst"] = val_imgs # Evaluation runs on Validation images
+            eval_data["testImglst"] = val_imgs + train_imgs # Evaluation runs on Train + Validation images
             eval_data["trainImglst"] = []
             eval_data["ValImgList"] = []
             
@@ -259,7 +259,7 @@ def scan_dataset_and_update_configs():
             if "Model" in eval_data:
                  # User Request: Update iTrainImgCount instead of iTestImgCount in Evaluation.json
                  # Even though we use testImglst.
-                 eval_data["Model"]["iTrainImgCount"] = len(val_imgs) 
+                 eval_data["Model"]["iTrainImgCount"] = len(val_imgs) + len(train_imgs)
                  eval_data["Model"]["iTestImgCount"] = 0 
                  eval_data["Model"]["iTotalClasses"] = len(classes)
                  eval_data["Model"]["iValidationImgCount"] = 0
@@ -1030,7 +1030,8 @@ def run_inference():
 
     test_imgs = scan_imgs_local(test_dir_path)
     val_imgs = scan_imgs_local(val_dir_path)
-    logger.info(f"Scanned {len(test_imgs)} test images and {len(val_imgs)} val images for inference.")
+    train_imgs = scan_imgs_local(train_dir)
+    logger.info(f"Scanned {len(test_imgs)} test images, {len(val_imgs)} val images, and {len(train_imgs)} train images for inference.")
 
     # --- 1. Run Evaluation ---
     eval_json = EVALUATION_JSON_PATH
@@ -1051,13 +1052,13 @@ def run_inference():
             # e_data["Model"]["ModelDir"] = model_dir_name # "Train"
             
             # User Request: Update iTrainImgCount instead of iTestImgCount in Evaluation.json
-            e_data["Model"]["iTrainImgCount"] = len(val_imgs)
+            e_data["Model"]["iTrainImgCount"] = len(val_imgs) + len(train_imgs)
             e_data["Model"]["iTestImgCount"] = 0
             e_data["Model"]["iTotalClasses"] = len(classes)
             e_data["Model"]["iValidationImgCount"] = 0
         
         # Update Image List - User snippet shows Evaluation using 'testImglst'
-        e_data["testImglst"] = val_imgs
+        e_data["testImglst"] = val_imgs + train_imgs
         e_data["trainImglst"] = []
         e_data["ValImgList"] = []
         # e_data["ValImgList"] = [] # formatting in user snippet had this empty
