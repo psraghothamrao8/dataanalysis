@@ -656,6 +656,7 @@ def run_automated_training(full_epochs=1, custom_params=None, custom_dataset_pat
     training_json = paths_dict["training_json"]
     eval_json = paths_dict["evaluation_json"]
     status_file = paths_dict["status_file"]
+    model_name = paths_dict["model_name"]  # Added to fix "model_name is not defined" error
     
     # 0. Clean up stale files to ensure we don't read old data
     try:
