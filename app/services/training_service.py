@@ -250,7 +250,7 @@ def scan_dataset_and_update_configs():
             # Update Images and Classes
             eval_data["classlst"] = class_lst
             eval_data["classBin"] = class_bin
-            eval_data["testImglst"] = test_imgs # Evaluation usually runs on Test, or Val? User snippet used testImglst & test images.
+            eval_data["testImglst"] = val_imgs # Evaluation runs on Validation images
             eval_data["trainImglst"] = []
             eval_data["ValImgList"] = []
             
@@ -259,7 +259,7 @@ def scan_dataset_and_update_configs():
             if "Model" in eval_data:
                  # User Request: Update iTrainImgCount instead of iTestImgCount in Evaluation.json
                  # Even though we use testImglst.
-                 eval_data["Model"]["iTrainImgCount"] = len(test_imgs) 
+                 eval_data["Model"]["iTrainImgCount"] = len(val_imgs) 
                  eval_data["Model"]["iTestImgCount"] = 0 
                  eval_data["Model"]["iTotalClasses"] = len(classes)
                  eval_data["Model"]["iValidationImgCount"] = 0
@@ -534,12 +534,20 @@ def parse_confusion_matrix_file(file_path, ok_classes=None):
                     if row_label.lower() == "unknown":
                         continue
                         
+                    import math
+                    def safe_float(v):
+                        try:
+                            f = float(v)
+                            return 0.0 if math.isnan(f) or math.isinf(f) else f
+                        except:
+                            return 0.0
+                            
                     metrics = {
                         "total": int(parts[1]),
                         "correct": int(parts[2]),
                         "incorrect": int(parts[3]),
-                        "accuracy": float(parts[4]),
-                        "error_rate": float(parts[5])
+                        "accuracy": safe_float(parts[4]),
+                        "error_rate": safe_float(parts[5])
                     }
                     if row_label.lower() == "sum":
                         total_metrics = metrics
@@ -985,10 +993,11 @@ def run_inference():
                      pass
         except: pass
 
-    # We need the test images list. 
-    # Let's re-scan test dir to be safe and independent.
+    # We need the test and val images list. 
+    # Let's re-scan test/val dir to be safe and independent.
     paths = get_data_paths()
     test_dir_path = paths['test']
+    val_dir_path = paths['val']
     
     # Quick scan for classes (needed for label indexing)
     train_dir = paths['train']
@@ -1020,7 +1029,8 @@ def run_inference():
         return imgs
 
     test_imgs = scan_imgs_local(test_dir_path)
-    logger.info(f"Scanned {len(test_imgs)} test images for inference.")
+    val_imgs = scan_imgs_local(val_dir_path)
+    logger.info(f"Scanned {len(test_imgs)} test images and {len(val_imgs)} val images for inference.")
 
     # --- 1. Run Evaluation ---
     eval_json = EVALUATION_JSON_PATH
@@ -1041,13 +1051,13 @@ def run_inference():
             # e_data["Model"]["ModelDir"] = model_dir_name # "Train"
             
             # User Request: Update iTrainImgCount instead of iTestImgCount in Evaluation.json
-            e_data["Model"]["iTrainImgCount"] = len(test_imgs)
+            e_data["Model"]["iTrainImgCount"] = len(val_imgs)
             e_data["Model"]["iTestImgCount"] = 0
             e_data["Model"]["iTotalClasses"] = len(classes)
             e_data["Model"]["iValidationImgCount"] = 0
         
         # Update Image List - User snippet shows Evaluation using 'testImglst'
-        e_data["testImglst"] = test_imgs
+        e_data["testImglst"] = val_imgs
         e_data["trainImglst"] = []
         e_data["ValImgList"] = []
         # e_data["ValImgList"] = [] # formatting in user snippet had this empty
