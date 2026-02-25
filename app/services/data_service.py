@@ -141,6 +141,7 @@ def detect_issues_in_split(split, path):
         "file_path": ds.files[i],
         "issue_type": "label_issue",
         "suggested_label": ds.classes[np.argmax(probs[i])],
+        "confidence": round(float(np.max(probs[i])), 4),
         "split": split
     } for i in issues_idx]
 
@@ -182,6 +183,7 @@ def detect_issues_with_model(model_path, split, path):
         "file_path": ds.files[i],
         "issue_type": "hybrid_label_issue",
         "suggested_label": ds.classes[np.argmax(probs_final[i])],
+        "confidence": round(float(np.max(probs_final[i])), 4),
         "split": split
     } for i in issues_idx]
 
