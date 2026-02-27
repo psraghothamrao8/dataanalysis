@@ -196,31 +196,48 @@ def scan_dataset_and_update_configs(custom_dataset_path=None):
             logger.error(f"Failed to update Training.json: {e}")
             return False
             
-    # 5. Update Testing.json
-    # Create it if it doesn't exist? Or only update if exists?
-    # Uses TESTING_JSON_PATH
-            
-    # Logic: Read SolutionDir and ModelName from Training.json to find the REAL Testing.json path
+    # 5. Update Testing.json & Evaluation.json - Create from templates if they don't exist
     target_test_json = paths_dict["testing_json"]
     evaluation_json_path = paths_dict["evaluation_json"]
 
-    # Create it if it doesn't exist? Or only update if exists?
-    # User says Test and Eval formats are similar, unlike Training.
+    # Ensure Evaluation.json exists
+    if not os.path.exists(evaluation_json_path):
+        eval_template = os.path.join(BASE_DIR, "evaluation.json") # Provide lowercase fallback
+        eval_template_uc = os.path.join(BASE_DIR, "Evaluation.json")
+        tpl = eval_template if os.path.exists(eval_template) else eval_template_uc
+        
+        if os.path.exists(tpl):
+            try:
+                shutil.copy(tpl, evaluation_json_path)
+                logger.info(f"Created {evaluation_json_path} from template.")
+            except Exception as e:
+                logger.error(f"Failed to create Evaluation.json from template: {e}")
+        else:
+             # Last resort: copy Training.json (though format differs, it's better than crashing)
+             if os.path.exists(training_json_path):
+                 try:
+                     shutil.copy(training_json_path, evaluation_json_path)
+                     logger.warning(f"Created {evaluation_json_path} from Training.json as fallback.")
+                 except: pass
+
+    # Ensure Testing.json exists
     if not os.path.exists(target_test_json):
-         if os.path.exists(evaluation_json_path):
+         test_template = os.path.join(BASE_DIR, "testing.json")
+         test_template_uc = os.path.join(BASE_DIR, "Testing.json")
+         tpl = test_template if os.path.exists(test_template) else test_template_uc
+         
+         if os.path.exists(tpl):
+             try:
+                 shutil.copy(tpl, target_test_json)
+                 logger.info(f"Created {target_test_json} from template.")
+             except Exception as e:
+                 logger.error(f"Failed to create Testing.json from template: {e}")
+         elif os.path.exists(evaluation_json_path):
              try:
                  shutil.copy(evaluation_json_path, target_test_json)
                  logger.info(f"Created {target_test_json} from Evaluation.json template.")
              except Exception as e:
                  logger.warning(f"Failed to create Testing.json from Evaluation.json: {e}")
-         elif os.path.exists(training_json_path):
-             # Fallback to Training only if really needed, but might be wrong format.
-             # Better to skip and warn? User said "Train is different". 
-             # Let's avoid copying Training.json if possible.
-             logger.warning(f"Testing.json missing at {target_test_json} and Evaluation.json not found. "
-                            "Skipping creation to avoid using Training.json (incompatible format).")
-    
-    
     if os.path.exists(target_test_json):
         try:
             with open(target_test_json, 'r') as f:
