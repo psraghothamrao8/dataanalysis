@@ -37,17 +37,22 @@ logger = setup_logger("pluto_trainer", os.path.join(LOGS_DIR, "startup.log"), mo
 
 
 # --- Dataset Scanning & JSON Update Logic ---
-def scan_dataset_and_update_configs():
+def scan_dataset_and_update_configs(custom_dataset_path=None):
     """
     Scans the dataset directory (Train/Val/Test) and updates 
     Training.json and Testing.json with the current file lists and class definitions.
     """
     logger.info("Scanning dataset and updating JSON configurations...")
     
-    paths = get_data_paths()
-    train_dir = paths['train']
-    val_dir = paths['val']
-    test_dir = paths['test']
+    if custom_dataset_path and os.path.exists(custom_dataset_path):
+        train_dir = os.path.join(custom_dataset_path, "train")
+        val_dir = os.path.join(custom_dataset_path, "val")
+        test_dir = os.path.join(custom_dataset_path, "test")
+    else:
+        paths = get_data_paths()
+        train_dir = paths['train']
+        val_dir = paths['val']
+        test_dir = paths['test']
     
     # 1. Identify Classes (Canonical List)
     # We look at train_dir for the source of truth for classes
@@ -64,7 +69,10 @@ def scan_dataset_and_update_configs():
     
     # 2. Build classlst and classBin
     # Check for user-defined class mapping metadata
-    meta_path = os.path.join(DATASET_ROOT, "dataset_meta.json")
+    if custom_dataset_path and os.path.exists(os.path.join(custom_dataset_path, "dataset_meta.json")):
+        meta_path = os.path.join(custom_dataset_path, "dataset_meta.json")
+    else:
+        meta_path = os.path.join(DATASET_ROOT, "dataset_meta.json")
     user_ok_classes = set()
     user_ng_classes = set()
     
@@ -657,7 +665,7 @@ def run_automated_training(full_epochs=1, custom_params=None, custom_dataset_pat
     
     # --- Step 0: Scan Dataset and Update JSONs ---
     # This ensures Training.json and Testing.json have correct file lists and class info
-    if not scan_dataset_and_update_configs():
+    if not scan_dataset_and_update_configs(custom_dataset_path=custom_dataset_path):
          return {"status": "error", "message": "Failed to scan dataset and update configurations."}
     
     paths_dict = get_model_paths()
@@ -967,22 +975,17 @@ def run_inference():
     # scan_dataset_and_update_configs wrote them to Testing.json, maybe we can read from there?
     # Or just re-scan. Let's read from Testing.json since it was just updated.
     
-    # Resolve Testing.json path (same logic as scan_dataset)
-    target_test_json = TESTING_JSON_PATH
-    t_data_for_paths = {}
+    paths_dict = get_model_paths()
+    target_test_json = paths_dict["testing_json"]
+    eval_json_path = paths_dict["evaluation_json"]
+    training_json = paths_dict["training_json"]
     
-    # Try to find real Testing.json if it exists (it should have been created/updated by scan_dataset)
-    # We'll use the one scan_dataset used.
-    # But wait, scan_dataset logic for 'real' path depends on Training.json content.
-    # Let's assume scan_dataset did its job and updated the Testing.json at target_test_json 
-    # OR at the specific Model path.
-    # Let's try to locate the most likely Testing.json to get the image list.
+    t_data_for_paths = {}
     
     test_imgs = []
     classes = []
     
     # Read Training.json to find model name and get context
-    training_json = TRAINING_JSON_PATH
     if os.path.exists(training_json):
         try:
             with open(training_json, 'r') as f:
@@ -1034,7 +1037,7 @@ def run_inference():
     logger.info(f"Scanned {len(test_imgs)} test images, {len(val_imgs)} val images, and {len(train_imgs)} train images for inference.")
 
     # --- 1. Run Evaluation ---
-    eval_json = EVALUATION_JSON_PATH
+    eval_json = eval_json_path
     
     # Update Evaluation.json IN PLACE
     if not os.path.exists(eval_json):
@@ -1123,27 +1126,11 @@ def run_inference():
     # but we need to ensure it's the right one and has the right ModelDir.
     
     # Resolve Real Test JSON Path
-    model_name = "Model_1"
-    try:
-         with open(training_json, 'r') as f:
-            t_data = json.load(f)
-            if "Model" in t_data:
-                model_name = t_data["Model"].get("name", "Model_1")
-    except: pass
-    
-    # Construct path: SolutionDir/Test/ModelName/Testing.json -> This is where Scan Dataset puts it?
-    # Actually scan_dataset puts it in `sol_dir/Test/model_name/Testing.json`.
-    # Let's use that path.
-    test_dir_real = os.path.join(MODELS_DIR, "Test", model_name)
+    real_test_json_path = target_test_json
+    test_dir_real = os.path.dirname(real_test_json_path)
     os.makedirs(test_dir_real, exist_ok=True)
-    real_test_json_path = os.path.join(test_dir_real, "Testing.json")
     
-    # If it doesn't exist, check default TESTING_JSON_PATH
-    if not os.path.exists(real_test_json_path) and os.path.exists(TESTING_JSON_PATH):
-        try:
-             shutil.copy(TESTING_JSON_PATH, real_test_json_path)
-        except: pass
-        
+    # If Testing.json doesn't exist, we can't run testing
     if not os.path.exists(real_test_json_path):
          logger.error("Testing.json not found and could not be created.")
          return {"status": "error", "message": "Testing configuration missing."}
