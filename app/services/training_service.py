@@ -1142,6 +1142,14 @@ def run_inference():
     # Note: scan_dataset_and_update_configs might have already updated a 'Testing.json' 
     # but we need to ensure it's the right one and has the right ModelDir.
     
+    model_name = "Model_1"
+    try:
+         with open(training_json, 'r') as f:
+            t_data = json.load(f)
+            if "Model" in t_data:
+                model_name = t_data["Model"].get("name", "Model_1")
+    except: pass
+    
     # Resolve Real Test JSON Path
     real_test_json_path = target_test_json
     test_dir_real = os.path.dirname(real_test_json_path)
