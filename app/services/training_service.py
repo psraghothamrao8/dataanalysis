@@ -127,7 +127,7 @@ def scan_dataset_and_update_configs(custom_dataset_path=None):
             # Recursive scan for images
             # Using glob for simplicity
             pattern = os.path.join(cls_path, "**", "*")
-            files = glob.glob(pattern, recursive=True)
+            files = sorted(glob.glob(pattern, recursive=True))
             
             for f_path in files:
                 if f_path.lower().endswith(('.bmp', '.png', '.jpg', '.jpeg', '.tif', '.tiff')):
