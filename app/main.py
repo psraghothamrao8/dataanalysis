@@ -59,6 +59,11 @@ class TrainingRequest(BaseModel):
     dataset_path: Optional[str] = None
     hyperparameters: Optional[Dict[str, Any]] = None
 
+# NEW: Model for Inference Request
+class InferenceRequest(BaseModel):
+    dataset_path: Optional[str] = None
+    model_path: Optional[str] = None
+
 class UploadPathRequest(BaseModel):
     file_path: str
     ok_classes: Optional[List[str]] = None
@@ -107,18 +112,27 @@ def start_train(req: Optional[TrainingRequest] = None):
         raise HTTPException(500, detail=f"Training failed: {str(e)}")
 
 @app.post("/api/inference")
-def inference():
-    """Runs inference on the validation/test set."""
+def inference(req: Optional[InferenceRequest] = None):
+    """Runs inference on the validation/test set.
+    Optional JSON Body:
+    {
+      "dataset_path": "/path/to/custom/dataset",
+      "model_path": "C:\\Users\\rag\\Pictures\\data_analysis\\path\\Solution\\Train\\Model_1"
+    }
+    """
     # 1. Check if already running (Train or Inference)
     if training_state["status"] == "running": 
         raise HTTPException(status_code=400, detail="A process (Training or Inference) is already running")
     
+    dataset_path = req.dataset_path if req else None
+    model_path = req.model_path if req else None
+
     # 2. Update state to running
     with state_lock: 
         training_state.update({"status": "running", "result": None, "error": None})
 
     try:
-        result = run_inference()
+        result = run_inference(dataset_path=dataset_path, model_path=model_path)
         
         # 3. Handle Result
         if result["status"] == "error":

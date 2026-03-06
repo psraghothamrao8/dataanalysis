@@ -989,32 +989,33 @@ def run_automated_training(full_epochs=200, custom_params=None, custom_dataset_p
         "model_name": model_name
     }
 
-def run_inference():
+def run_inference(dataset_path=None, model_path=None):
     """
-    Runs (Evaluation -> Testing) sequence without Training.
-    This corresponds to the User's "Inference" request.
+    Step 4: Inference
     """
-    logger.info("Starting Inference (Evaluation & Testing) via DLProcessWrapper")
-    
-    # --- Step 0: Scan Dataset and Update JSONs ---
-    # Updates Training.json and default Testing.json with current file lists
-    # This also populates the file lists in memory if we need them, but 
-    # scan_dataset_and_update_configs returns True/False.
-    # We need the image lists. Let's re-scan or rely on the JSONs being updated.
-    # scan_dataset_and_update_configs updates Testing.json! But we need to update Evaluation.json too.
-    if not scan_dataset_and_update_configs():
+    logger.info("Starting Inference process...")
+    # Update configurations to ensure file lists are current. 
+    # Use custom_dataset_path if provided.
+    if not scan_dataset_and_update_configs(custom_dataset_path=dataset_path):
          return {"status": "error", "message": "Failed to scan dataset and update configurations."}
     
     # We need to know where the model is.
-    # Based on User input: ModelDir = "Train", SolutionDir = MODELS_DIR
-    model_dir_name = "Train"
-    solution_dir = str(MODELS_DIR) + os.sep
-
-    # Get Test Images (we need to populate Evaluation.json with them)
-    # scan_dataset_and_update_configs wrote them to Testing.json, maybe we can read from there?
-    # Or just re-scan. Let's read from Testing.json since it was just updated.
-    
-    paths_dict = get_model_paths()
+    if model_path and os.path.exists(model_path):
+        model_name = os.path.basename(os.path.normpath(model_path))
+        logger.info(f"Using explicitly provided model path: {model_path} ({model_name})")
+        # Ensure Test dir resolves correctly depending on standard structure
+        test_dir = model_path.replace("Train", "Test") if "Train" in model_path else os.path.join(model_path, "Test")
+        paths_dict = {
+             "model_name": model_name,
+             "train_dir": model_path,
+             "test_dir": test_dir,
+             "training_json": os.path.join(model_path, "Training.json"),
+             "evaluation_json": os.path.join(model_path, "Evaluation.json"),
+             "testing_json": os.path.join(test_dir, "Testing.json"),
+        }
+    else:
+        paths_dict = get_model_paths()
+        
     target_test_json = paths_dict["testing_json"]
     eval_json_path = paths_dict["evaluation_json"]
     training_json = paths_dict["training_json"]
@@ -1036,13 +1037,18 @@ def run_inference():
         except: pass
 
     # We need the test and val images list. 
-    # Let's re-scan test/val dir to be safe and independent.
-    paths = get_data_paths()
-    test_dir_path = paths['test']
-    val_dir_path = paths['val']
+    # Read from custom dataset_path if provided
+    if dataset_path and os.path.exists(dataset_path):
+         test_dir_path = os.path.join(dataset_path, "test")
+         val_dir_path = os.path.join(dataset_path, "val")
+         train_dir = os.path.join(dataset_path, "train")
+    else:
+         paths = get_data_paths()
+         test_dir_path = paths['test']
+         val_dir_path = paths['val']
+         train_dir = paths['train']
     
     # Quick scan for classes (needed for label indexing)
-    train_dir = paths['train']
     if os.path.exists(train_dir):
         classes = sorted([d for d in os.listdir(train_dir) if os.path.isdir(os.path.join(train_dir, d))])
     class_to_idx = {cls_name: idx for idx, cls_name in enumerate(classes)}
