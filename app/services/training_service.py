@@ -156,7 +156,7 @@ def scan_dataset_and_update_configs(custom_dataset_path=None):
 
     # Ensure Training.json exists by copying from template if needed
     if not os.path.exists(training_json_path):
-        template_path = os.path.join(BASE_DIR, "training.json")
+        template_path = os.path.join(BASE_DIR, "Training.json")
         if os.path.exists(template_path):
             try:
                 shutil.copy(template_path, training_json_path)
@@ -674,12 +674,31 @@ def poll_for_file(file_path, timeout=300):
     logger.warning(f"Timeout waiting for file: {file_path}")
     return False
 
-def run_automated_training(full_epochs=1, custom_params=None, custom_dataset_path=None):
+def run_automated_training(full_epochs=200, custom_params=None, custom_dataset_path=None):
     """
     Replaced Run Automated Training to use DLProcessWrapper.
     """
     logger.info("Starting Automated Training via DLProcessWrapper")
     
+    # --- Reset JSONs if custom params are given ---
+    if custom_params and len(custom_params) > 0:
+        logger.info("Custom parameters provided. Resetting model configs from base templates.")
+        paths_dict = get_model_paths()
+        for tpl_name, target_key in [("Training.json", "training_json"), 
+                                     ("Evaluation.json", "evaluation_json"), 
+                                     ("Testing.json", "testing_json")]:
+            target_path = paths_dict[target_key]
+            template_path = os.path.join(BASE_DIR, tpl_name)
+            if not os.path.exists(template_path):
+                 template_path = os.path.join(BASE_DIR, tpl_name.lower())
+            
+            if os.path.exists(template_path):
+                 try:
+                     shutil.copy(template_path, target_path)
+                     logger.info(f"Reset {target_path} from base template.")
+                 except Exception as e:
+                     logger.error(f"Failed to reset {target_path}: {e}")
+
     # --- Step 0: Scan Dataset and Update JSONs ---
     # This ensures Training.json and Testing.json have correct file lists and class info
     if not scan_dataset_and_update_configs(custom_dataset_path=custom_dataset_path):
@@ -719,7 +738,7 @@ def run_automated_training(full_epochs=1, custom_params=None, custom_dataset_pat
             def objective(trial):
                 trial_lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
                 trial_batch_size = trial.suggest_categorical("batch_size", [8, 16, 32])
-                trial_params = {"lr": trial_lr, "batch_size": trial_batch_size, "epochs": full_epochs}
+                trial_params = {"lr": trial_lr, "batch_size": trial_batch_size, "epochs": 20}
                 
                 logger.info(f"Optuna Trial {trial.number}: Testing params {trial_params}")
                 
@@ -778,10 +797,13 @@ def run_automated_training(full_epochs=1, custom_params=None, custom_dataset_pat
             logger.error(f"Optuna tuning encountered an error: {e}. Falling back to defaults.")
             best_params = {"epochs": full_epochs}
             
-    # Update Training.json with the best parameters before final training
-    logger.info(f"Generating final Training.json with params: {best_params}")
-    if not generate_config_json(training_json, mode="Train", params=best_params):
-         return {"status": "error", "message": "Failed to generate Training.json"}
+    # Update all JSON files with the best parameters before final training
+    logger.info(f"Generating final configs with params: {best_params}")
+    for target_key in ["training_json", "evaluation_json", "testing_json"]:
+        target_path = paths_dict.get(target_key)
+        if target_path and os.path.exists(target_path):
+             if not generate_config_json(target_path, mode="Train", params=best_params):
+                 logger.warning(f"Failed to apply final parameters to {target_path}")
 
     # --- identify OK classes from training.json for metrics calculation ---
     ok_classes = ["OK"] # default fallback
